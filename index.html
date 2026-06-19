@@ -223,6 +223,7 @@ button{font-family:inherit;cursor:pointer;border:none;color:inherit;background:n
 }
 .promo.show{transform:translate(-50%,-50%) scale(1);opacity:1}
 .promo-plus{flex:none;display:grid;place-items:center}
+.promo-face{flex:none;width:clamp(72px,9vw,128px);height:clamp(72px,9vw,128px);border-radius:50%;object-fit:cover;border:5px solid #fff;background:#0b1020;box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .promo-plus svg{width:clamp(64px,8vw,120px);height:clamp(64px,8vw,120px);display:block}
 .promo.show .promo-plus{animation:plusPop .7s cubic-bezier(.2,1.7,.35,1) both}
 @keyframes plusPop{0%{transform:scale(0) rotate(-35deg)}100%{transform:scale(1) rotate(-6deg)}}
@@ -346,7 +347,8 @@ button{font-family:inherit;cursor:pointer;border:none;color:inherit;background:n
 
   <!-- pop-up "nova família" (selo no meio da tela, aleatório) -->
   <div class="promo" id="promo" role="status" aria-live="polite">
-    <span class="promo-plus" aria-hidden="true">
+    <img class="promo-face" id="promoFace" alt="" style="display:none">
+    <span class="promo-plus" id="promoPlus" aria-hidden="true">
       <svg viewBox="0 0 120 120"><g fill="#21A14B">
         <rect x="46" y="12" width="28" height="96" rx="13"/>
         <rect x="12" y="46" width="96" height="28" rx="13"/>
@@ -390,6 +392,19 @@ const CFG = {
   promoMinMs: 20 * 1000,   // espera no mínimo 20s
   promoMaxMs: 50 * 1000,   // e no máximo 50s entre um pop-up e outro
   promoShowMs: 6 * 1000    // fica 6s na tela
+};
+
+/* =========================================================================
+   SUPABASE — celebrações aprovadas do "sininho" entram no pop-up com FOTO REAL.
+   Deixe em branco e o painel roda como hoje (pop-up decorativo aleatório).
+   Preencha quando o projeto existir (Settings → API):
+   ========================================================================= */
+const SB = {
+  url:     "",   // ex.: https://xxxxxxxx.supabase.co   (Project URL)
+  anonKey: "",   // anon public key
+  email:   "",   // conta 'telao' (opcional — senão usa uma sessão já logada na TV)
+  senha:   "",
+  bucket:  "celebracoes"
 };
 
 /* Frase pequena embaixo do selo (sorteia uma a cada aparição — edite à vontade) */
@@ -719,14 +734,89 @@ function showSoundCta(on){
 }
 $("#soundCta").addEventListener("click", ()=>{ setSound(true); showSoundCta(false); });
 
-/* ---------- pop-up "nova família" (aleatório, só durante os vídeos) ---------- */
+/* ---------- pop-up "nova família" ---------- */
 let promoTimer=null;
+
+/* === celebrações aprovadas (vindas do Supabase) === */
+let sbClient=null, _sbLib=null;
+const celebs=[]; let celebIdx=0;
+
+function ensureSupabaseLib(){
+  if(_sbLib) return Promise.resolve(_sbLib);
+  return import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm")
+    .then(m=>{ _sbLib=m; return m; });
+}
+async function toCeleb(row){
+  try{
+    if(!row || !row.foto_telao) return null;
+    const { data } = await sbClient.storage.from(SB.bucket).createSignedUrl(row.foto_telao, 21600);
+    const url = data && data.signedUrl;
+    if(!url) return null;
+    return { id:row.id, url, nome:row.identificacao||"", loja:row.loja||"" };
+  }catch(e){ return null; }
+}
+async function refreshCelebs(){
+  if(!sbClient) return;
+  try{
+    const { data } = await sbClient.from("celebracoes").select("*")
+      .eq("status","aprovado").order("decidido_em",{ascending:false}).limit(20);
+    const list=[];
+    for(const row of (data||[])){ const c=await toCeleb(row); if(c) list.push(c); }
+    celebs.length=0; celebs.push(...list); celebIdx=0;
+  }catch(e){}
+}
+async function initCelebracoes(){
+  if(!SB.url || !SB.anonKey) return;           // não configurado → painel roda como hoje
+  try{
+    const { createClient } = await ensureSupabaseLib();
+    sbClient = createClient(SB.url, SB.anonKey);
+    if(SB.email && SB.senha){
+      await sbClient.auth.signInWithPassword({ email:SB.email, password:SB.senha });
+    }
+    await refreshCelebs();
+    sbClient.channel("telao-celebracoes")
+      .on("postgres_changes",
+          { event:"UPDATE", schema:"public", table:"celebracoes" },
+          async (payload)=>{
+            if(payload.new && payload.new.status==="aprovado"){
+              const c = await toCeleb(payload.new);
+              if(c){
+                if(!celebs.find(x=>x.id===c.id)) celebs.unshift(c);
+                forcePromo(c);                 // família recém-aprovada aparece na hora
+              }
+            }
+          })
+      .subscribe();
+  }catch(e){ /* silencioso: a TV continua tocando os vídeos normalmente */ }
+}
+function nextCeleb(){
+  if(!celebs.length) return null;
+  const c=celebs[celebIdx % celebs.length]; celebIdx++; return c;
+}
+function paintPromo(celeb){
+  const face=$("#promoFace"), plus=$("#promoPlus");
+  if(celeb){
+    face.src=celeb.url; face.style.display="block"; plus.style.display="none";
+    $("#promoText").textContent = celeb.nome ? ("Bem-vindos, "+celeb.nome+"! 💚❤️")
+                                             : "Bem-vindos à família! 💚❤️";
+  } else {
+    face.style.display="none"; plus.style.display="";
+    $("#promoText").textContent = PROMOS[Math.floor(Math.random()*PROMOS.length)];
+  }
+}
+function canShowPromo(){
+  return !$("#player").classList.contains("hidden") && $("#error").classList.contains("hidden");
+}
 function showPromoOnce(){
-  if($("#player").classList.contains("hidden")) return;     // só no player
-  if(!$("#error").classList.contains("hidden")) return;     // não sobre tela de erro
-  $("#promoText").textContent = PROMOS[Math.floor(Math.random()*PROMOS.length)];
-  const el=$("#promo");
-  el.classList.add("show");
+  if(!canShowPromo()) return;
+  paintPromo(nextCeleb());          // família real se houver; senão o card decorativo
+  const el=$("#promo"); el.classList.add("show");
+  setTimeout(()=> el.classList.remove("show"), CFG.promoShowMs);
+}
+function forcePromo(celeb){
+  if(!canShowPromo()) return;
+  paintPromo(celeb);
+  const el=$("#promo"); el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
   setTimeout(()=> el.classList.remove("show"), CFG.promoShowMs);
 }
 function schedulePromo(){
@@ -835,6 +925,10 @@ focusMenu();   // já deixa um card selecionado p/ controle/teclado
 loadYTApi();
 fetchLinks().then(l=>{ LINKS=l; }).catch(()=>{});
 setInterval(()=>{ fetchLinks().then(l=>{ LINKS=l; }).catch(()=>{}); }, CFG.pollMs);
+
+/* conecta ao Supabase (se configurado) e renova as fotos aprovadas periodicamente */
+initCelebracoes();
+setInterval(refreshCelebs, 30 * 60 * 1000);
 
 </script>
 </body>
