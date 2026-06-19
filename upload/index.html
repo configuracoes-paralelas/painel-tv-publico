@@ -384,7 +384,7 @@ function go(id){
   if(id!=='c-selfie') stopCam();
   $$('.screen').forEach(s=>s.classList.toggle('active', s.id===id));
   if(id==='c-consent') $('#consentSelfie').src = selfieURL || PLACEHOLDER;
-  if(id==='s-queue') loadQueue();
+  if(id==='s-queue'){ loadQueue(); subscribeQueue(); }
   if(id==='c-selfie') resetSelfieUI();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -523,6 +523,15 @@ async function loadQueue(){
 
 /* ---- SUPERINTENDENTE: abre a revisão de um registro real ---- */
 async function openReview(row){
+  if(SB.configured){
+    try{
+      const c=await ensureSupabase();
+      const { data:fresh }=await c.from('celebracoes').select('status').eq('id',row.id).single();
+      if(fresh && fresh.status!=='pendente'){
+        toast('Esse registro já foi decidido','#dc2626'); loadQueue(); return;
+      }
+    }catch(e){}
+  }
   reviewRow=row;
   $('#rTelaoPhoto').src=await signed(row.foto_telao);
   document.querySelector('.rSelfie').src=await signed(row.selfie);
@@ -541,8 +550,13 @@ async function decidir(novo){
     const { data:u }=await c.auth.getUser();
     const patch={ status:novo, decidido_em:new Date().toISOString(), decidido_por:(u&&u.user&&u.user.id)||null };
     if(novo==='aprovado') patch.exibir_ate=new Date(Date.now()+SB.exibirDias*864e5).toISOString();
-    const { error }=await c.from('celebracoes').update(patch).eq('id', reviewRow.id);
+    const { data, error }=await c.from('celebracoes')
+      .update(patch).eq('id', reviewRow.id).eq('status','pendente').select();
     if(error){ toast('Falha: '+error.message,'#dc2626'); return; }
+    if(!data || !data.length){
+      toast('Esse registro já foi decidido por outra pessoa','#dc2626');
+      reviewRow=null; setTimeout(()=>go('s-queue'),900); return;
+    }
     toast(novo==='aprovado' ? 'Aprovado! Já vai ao telão ✓' : 'Reprovado', novo==='aprovado'?null:'#dc2626');
     reviewRow=null; setTimeout(()=>go('s-queue'),800);
   }catch(e){ toast('Erro ao decidir','#dc2626'); }
@@ -562,8 +576,36 @@ function resetState(){
 }
 function concluir(){ resetState(); go('g-new'); }     // gerente inicia o próximo registro
 async function logout(){
+  unsubscribeQueue();
   try{ if(sb) await sb.auth.signOut(); }catch(e){}
   resetState(); go('login');
+}
+/* ===== TEMPO REAL: fila viva + trava contra decisão dupla ===== */
+let queueChannel=null, queueRefreshTimer=null;
+function scheduleQueueRefresh(){
+  clearTimeout(queueRefreshTimer);
+  queueRefreshTimer=setTimeout(()=>{ if($('#s-queue').classList.contains('active')) loadQueue(); }, 350);
+}
+async function subscribeQueue(){
+  if(!SB.configured || queueChannel) return;
+  const c=await ensureSupabase();
+  queueChannel = c.channel('sininho-fila')
+    .on('postgres_changes', { event:'*', schema:'public', table:'celebracoes' }, (payload)=>{
+      const novo=payload.new, antigo=payload.old;
+      const id=(novo&&novo.id)||(antigo&&antigo.id);
+      if(reviewRow && id===reviewRow.id &&
+         $('#s-review').classList.contains('active') &&
+         novo && novo.status && novo.status!=='pendente'){
+        toast('Esse registro acabou de ser decidido por outra pessoa','#dc2626');
+        reviewRow=null; setTimeout(()=>go('s-queue'),900); return;
+      }
+      scheduleQueueRefresh();
+    })
+    .subscribe();
+}
+function unsubscribeQueue(){
+  try{ if(queueChannel && sb) sb.removeChannel(queueChannel); }catch(e){}
+  queueChannel=null; clearTimeout(queueRefreshTimer);
 }
 async function bootAuth(){
   if(!SB.configured){ $('#cfgWarn').style.display='block'; return; }
