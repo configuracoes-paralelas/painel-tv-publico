@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Painéis TV — Lojas</title>
-<link rel="icon" type="image/png" sizes="512x512" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
@@ -290,6 +289,13 @@ button{font-family:inherit;cursor:pointer;border:none;color:inherit;background:n
   .slot.slide{transition:none}
   #menu .brand,.choice,#menuHint{opacity:1;transform:none}
 }
+
+/* LGPD: aviso permanente no telão (texto recomendado pelo jurídico) */
+#lgpdNotice{position:fixed;left:0;right:0;bottom:0;z-index:55;pointer-events:none;
+  background:linear-gradient(0deg,rgba(0,0,0,.6),transparent);
+  color:rgba(255,255,255,.85);font:600 12px/1.45 'Inter',sans-serif;text-align:center;
+  padding:14px 18px 9px;letter-spacing:.01em}
+@media (max-width:640px){#lgpdNotice{font-size:10px;padding:10px 12px 7px}}
 </style>
 </head>
 <body>
@@ -1006,5 +1012,6 @@ initCelebracoes();
 setInterval(refreshCelebs, 30 * 60 * 1000);
 
 </script>
+<div id="lgpdNotice">As imagens exibidas neste telão são apresentadas mediante consentimento dos respectivos titulares, exclusivamente para celebração da aquisição do imóvel. Para informações sobre privacidade e exercício de direitos, consulte nosso Aviso de Privacidade.</div>
 </body>
 </html>
