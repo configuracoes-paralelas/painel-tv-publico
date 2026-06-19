@@ -407,7 +407,8 @@ const CFG = {
   // pop-up "nova família" — aparece em intervalos ALEATÓRIOS durante os vídeos
   promoMinMs: 20 * 1000,   // espera no mínimo 20s
   promoMaxMs: 50 * 1000,   // e no máximo 50s entre um pop-up e outro
-  promoShowMs: 8 * 1000    // fica 8s na tela (visível do salão)
+  promoShowMs: 8 * 1000,   // fica 8s na tela (visível do salão)
+  debug: true              // <- mostra diagnóstico na TELA da TV. Deixe false quando resolver.
 };
 
 /* =========================================================================
@@ -430,6 +431,23 @@ const PROMOS = [
   "Você + Perto ❤️💚",
   "Bem-vindos à família! 🔑💚"
 ];
+
+/* ---------- DIAGNÓSTICO NA TELA (sem console) ---------- */
+function dbg(msg){
+  if(!CFG.debug) return;
+  let el = document.getElementById("dbg");
+  if(!el){
+    el = document.createElement("div");
+    el.id = "dbg";
+    el.style.cssText = "position:fixed;left:8px;top:8px;z-index:99999;max-width:70vw;"
+      + "background:rgba(0,0,0,.85);color:#3fff7a;font:600 15px/1.45 monospace;"
+      + "padding:10px 12px;border-radius:10px;white-space:pre-wrap;pointer-events:none;"
+      + "box-shadow:0 6px 24px rgba(0,0,0,.4)";
+    document.body.appendChild(el);
+  }
+  const t = new Date().toLocaleTimeString();
+  el.textContent = (`[${t}] ${msg}\n` + el.textContent).split("\n").slice(0,12).join("\n");
+}
 
 /* ---------- CSV mínimo (lida com aspas e vírgulas internas) ---------- */
 function parseCSV(text){
@@ -776,18 +794,25 @@ function cleanPath(p){
   return p.replace(/^\/?celebracoes\//,"").replace(/^\/+/,""); // tira 'celebracoes/' do começo
 }
 async function signedUrl(path){
-  path = cleanPath(path);
-  if(!path) return null;
+  const clean = cleanPath(path);
+  if(!clean){ dbg("foto_telao vazio/ inválido: «"+path+"»"); return null; }
   try{
     const token = await tokenTV();
-    const res = await fetch(`${SB.url}/storage/v1/object/sign/${SB.bucket}/${encodeURI(path)}`,{
+    dbg("assinando: "+clean+(token?" (LOGADO)":" (anon)"));
+    const res = await fetch(`${SB.url}/storage/v1/object/sign/${SB.bucket}/${encodeURI(clean)}`,{
       method:"POST",
       headers:{ "Authorization":"Bearer "+(token||SB.anonKey), "apikey":SB.anonKey, "content-type":"application/json" },
       body: JSON.stringify({ expiresIn: 21600 }) });
-    if(!res.ok) return null;
+    if(!res.ok){
+      let body=""; try{ body=await res.text(); }catch(e){}
+      dbg("ERRO sign HTTP "+res.status+" → "+body.slice(0,140));
+      return null;
+    }
     const j = await res.json();
-    return j.signedURL ? (SB.url + "/storage/v1" + j.signedURL) : null;
-  }catch(e){ return null; }
+    if(!j.signedURL){ dbg("sign sem signedURL"); return null; }
+    dbg("sign OK ✓");
+    return SB.url + "/storage/v1" + j.signedURL;
+  }catch(e){ dbg("exceção sign: "+(e&&e.message)); return null; }
 }
 async function toCeleb(row){
   try{
@@ -802,6 +827,7 @@ async function refreshCelebs(){
   try{
     const { data } = await sbClient.from("celebracoes").select("*")
       .eq("status","aprovado").order("decidido_em",{ascending:false}).limit(20);
+    dbg("aprovadas no banco: "+(data?data.length:0));
     const list=[];
     for(const row of (data||[])){ const c=await toCeleb(row); if(c) list.push(c); }
     celebs.length=0; celebs.push(...list); celebIdx=0;
@@ -814,6 +840,7 @@ async function initCelebracoes(){
   try{
     const { createClient } = await ensureSupabaseLib();
     sbClient = createClient(SB.url, SB.anonKey);
+    dbg("Supabase conectado");
     if(SB.email && SB.senha){
       await sbClient.auth.signInWithPassword({ email:SB.email, password:SB.senha });
     }
@@ -823,6 +850,7 @@ async function initCelebracoes(){
           { event:"UPDATE", schema:"public", table:"celebracoes" },
           async (payload)=>{
             const row = payload.new;
+            dbg("evento UPDATE id="+(row&&row.id)+" status="+(row&&row.status));
             if(!row || row.status!=="aprovado") return;   // só aprovação
             if(shownIds.has(row.id)) return;              // nunca repete a mesma família
             shownIds.add(row.id);
@@ -836,7 +864,7 @@ async function initCelebracoes(){
             }
           })
       .subscribe();
-  }catch(e){ /* silencioso: a TV continua tocando os vídeos normalmente */ }
+  }catch(e){ dbg("falha initCelebracoes: "+(e&&e.message)); }
 }
 function nextCeleb(){
   if(!celebs.length) return null;
@@ -873,8 +901,8 @@ function presentPromo(celeb){
   if(!canShowPromo()) return;
   if(celeb && celeb.url){
     const pre=new Image();
-    pre.onload  = ()=> revealPromo(celeb);                 // foto pronta → mostra
-    pre.onerror = ()=> revealPromo({ nome:celeb.nome, loja:celeb.loja }); // sem url → só o "+"
+    pre.onload  = ()=> { dbg("imagem carregou ✓ (DEVE aparecer agora)"); revealPromo(celeb); };
+    pre.onerror = ()=> { dbg("imagem NÃO carregou (link assinado ruim/expirado)"); revealPromo({ nome:celeb.nome, loja:celeb.loja }); };
     pre.src = celeb.url;                                    // pré-carrega (vai pro cache)
   } else {
     revealPromo(celeb);
