@@ -314,8 +314,8 @@ let celebId=null, reviewRow=null;
 
 /* ===== SUPABASE — preencha pra ligar de verdade; em branco = protótipo clicável ===== */
 const SB = {
-  url:     "https://ccrkhflelncanduptfxv.supabase.co",   // ex.: https://xxxxxxxx.supabase.co   (Settings → API → Project URL)
-  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjcmtoZmxlbG5jYW5kdXB0Znh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MTA1NzIsImV4cCI6MjA5NzM4NjU3Mn0.qNuLgNVM9EckdDyxjsMV_aTdCgLG8vEMNJa2BxjObpQ",   // anon public key
+  url:     "https://ccrkhflelncanduptfxv.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjcmtoZmxlbG5jYW5kdXB0Znh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MTA1NzIsImV4cCI6MjA5NzM4NjU3Mn0.qNuLgNVM9EckdDyxjsMV_aTdCgLG8vEMNJa2BxjObpQ",
   bucket:  "celebracoes",
   consentVersao: "v1-2026-06",   // versão do texto de consentimento aceito (LGPD)
   exibirDias: 7,                 // por quantos dias a família pode aparecer no telão
@@ -341,10 +341,37 @@ function dataURLtoBlob(d){
   for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
   return new Blob([u],{type:mime});
 }
+async function tokenAtual(c){
+  try{ const { data }=await (c||sb).auth.getSession(); return data && data.session && data.session.access_token; }
+  catch(e){ return null; }
+}
+/* upload via fetch direto, com o token na mão (à prova de falha de auth) */
+async function storageUpload(c, path, body, contentType){
+  const token = await tokenAtual(c);
+  if(!token) return { error:{ message:'sem sessão ativa' } };
+  const headers = { 'Authorization':'Bearer '+token, 'apikey':SB.anonKey, 'x-upsert':'true' };
+  if(contentType) headers['content-type']=contentType;
+  try{
+    const res = await fetch(`${SB.url}/storage/v1/object/${SB.bucket}/${encodeURI(path)}`,
+                            { method:'POST', headers, body });
+    if(res.ok) return { error:null };
+    let msg='HTTP '+res.status; try{ const j=await res.json(); msg=j.message||j.error||msg; }catch(e){}
+    return { error:{ message:msg } };
+  }catch(e){ return { error:{ message:'rede' } }; }
+}
+/* URL assinada via fetch direto */
 async function signed(path){
   if(!path) return PLACEHOLDER;
-  try{ const {data}=await sb.storage.from(SB.bucket).createSignedUrl(path,3600);
-       return (data&&data.signedUrl)||PLACEHOLDER; }catch(e){ return PLACEHOLDER; }
+  try{
+    const token = await tokenAtual(sb);
+    const res = await fetch(`${SB.url}/storage/v1/object/sign/${SB.bucket}/${encodeURI(path)}`,
+      { method:'POST',
+        headers:{ 'Authorization':'Bearer '+(token||SB.anonKey), 'apikey':SB.anonKey, 'content-type':'application/json' },
+        body: JSON.stringify({ expiresIn: 3600 }) });
+    if(!res.ok) return PLACEHOLDER;
+    const j = await res.json();
+    return j.signedURL ? (SB.url + '/storage/v1' + j.signedURL) : PLACEHOLDER;
+  }catch(e){ return PLACEHOLDER; }
 }
 function fmtTime(ts){
   try{ return new Date(ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
@@ -433,7 +460,7 @@ async function gerenteSubmit(){
     const id=(crypto.randomUUID && crypto.randomUUID()) || (Date.now()+'-'+Math.random().toString(16).slice(2));
     const ext=((gerenteFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,''))||'jpg';
     const path=`${id}/telao.${ext}`;
-    const up=await c.storage.from(SB.bucket).upload(path, gerenteFile, {upsert:true});
+    const up=await storageUpload(c, path, gerenteFile, gerenteFile.type||'image/png');
     if(up.error){ toast('Falha no upload: '+up.error.message,'#dc2626'); return; }
     const ins=await c.from('celebracoes').insert({
       id, loja:$('#gloja').value.trim()||null, identificacao:$('#gid').value.trim()||null,
@@ -455,8 +482,7 @@ async function clienteSubmit(){
     const c=await ensureSupabase();
     if(!await sessaoAtiva(c)){ toast('Sessão perdida — entre novamente','#dc2626'); go('login'); return; }
     const path=`${celebId}/selfie.jpg`;
-    const up=await c.storage.from(SB.bucket).upload(path, dataURLtoBlob(selfieURL),
-              {upsert:true, contentType:'image/jpeg'});
+    const up=await storageUpload(c, path, dataURLtoBlob(selfieURL), 'image/jpeg');
     if(up.error){ toast('Falha no upload: '+up.error.message,'#dc2626'); return; }
     const upd=await c.from('celebracoes').update({
       selfie:path,
@@ -550,6 +576,7 @@ async function bootAuth(){
     }
   }catch(e){}
 }
+console.log('%cSININHO build: upload via fetch+token (v3)', 'color:#21A14B;font-weight:bold');
 bootAuth();
 </script>
 </body>
