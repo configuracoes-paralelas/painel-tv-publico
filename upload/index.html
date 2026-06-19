@@ -321,13 +321,19 @@ const SB = {
   exibirDias: 7,                 // por quantos dias a família pode aparecer no telão
   get configured(){ return !!(this.url && this.anonKey); }
 };
-let _sbLib=null, sb=null;
+let _sbPromise=null, sb=null;
 function ensureSupabase(){
-  if(sb) return Promise.resolve(sb);
-  const mk = (lib)=>{ sb = lib.createClient(SB.url, SB.anonKey); return sb; };
-  if(_sbLib) return Promise.resolve(mk(_sbLib));
-  return import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm")
-    .then(m=>{ _sbLib=m; return mk(m); });
+  if(!SB.configured) return Promise.resolve(null);
+  if(_sbPromise) return _sbPromise;            // garante UM ÚNICO cliente, sem corrida
+  _sbPromise = import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm")
+    .then(m=>{ sb = m.createClient(SB.url, SB.anonKey,
+                 { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:false } });
+               return sb; });
+  return _sbPromise;
+}
+async function sessaoAtiva(c){
+  try{ const { data }=await c.auth.getSession(); return !!(data && data.session); }
+  catch(e){ return false; }
 }
 function dataURLtoBlob(d){
   const [h,b]=d.split(','); const mime=(h.match(/:(.*?);/)||[])[1]||'image/jpeg';
@@ -423,6 +429,7 @@ async function gerenteSubmit(){
   toast('Enviando…','#2563eb');
   try{
     const c=await ensureSupabase();
+    if(!await sessaoAtiva(c)){ toast('Sessão perdida — entre novamente','#dc2626'); go('login'); return; }
     const id=(crypto.randomUUID && crypto.randomUUID()) || (Date.now()+'-'+Math.random().toString(16).slice(2));
     const ext=((gerenteFile.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,''))||'jpg';
     const path=`${id}/telao.${ext}`;
@@ -446,6 +453,7 @@ async function clienteSubmit(){
   toast('Enviando…','#2563eb');
   try{
     const c=await ensureSupabase();
+    if(!await sessaoAtiva(c)){ toast('Sessão perdida — entre novamente','#dc2626'); go('login'); return; }
     const path=`${celebId}/selfie.jpg`;
     const up=await c.storage.from(SB.bucket).upload(path, dataURLtoBlob(selfieURL),
               {upsert:true, contentType:'image/jpeg'});
