@@ -146,6 +146,18 @@ textarea{min-height:60px;resize:vertical}
 .spacer{height:8px}
 .backline{margin-top:14px;text-align:center}
 .backline button{background:none;border:none;color:var(--muted);font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline}
+
+/* LGPD: aviso de privacidade + menores */
+.privacy{background:var(--paper-2);border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:14px;font-size:13px;font-weight:600;line-height:1.5;color:var(--text)}
+.privacy>b{font-size:13px}
+.privacy p{color:var(--muted);margin-top:6px}
+.privacy summary{cursor:pointer;color:var(--green-deep);font-weight:800;margin-top:8px}
+.privacy-full{margin-top:4px}.privacy-full p{margin-top:8px;color:var(--muted)}
+.minors{border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:6px 0 8px;background:#fff}
+.minors-q{font-weight:800;font-size:13.5px;margin-bottom:9px}
+.radio{display:inline-flex;gap:7px;align-items:center;margin-right:18px;font-weight:700;font-size:14.5px;cursor:pointer}
+.radio input{width:20px;height:20px;accent-color:var(--green)}
+.minors-block{margin-top:10px;font-size:12.5px;font-weight:700;color:#7a5b12;background:#fff7e6;border:1px solid #f0c36d;border-radius:12px;padding:11px 13px}
 </style>
 </head>
 <body>
@@ -232,16 +244,49 @@ textarea{min-height:60px;resize:vertical}
     <div class="brand" data-role="c"></div>
     <div class="card">
       <h1>Autorização de uso da imagem</h1>
-      <p class="lead">Leia e marque os itens para autorizar. Você pode revogar depois.</p>
+      <p class="lead">Leia o resumo, marque os itens e autorize. Você pode revogar depois.</p>
       <img id="consentSelfie" class="selfie-thumb" alt="sua selfie">
-      <div class="muted center" style="margin-bottom:10px">Sua selfie</div>
+      <div class="muted center" style="margin-bottom:12px">Sua selfie</div>
 
-      <label class="consent"><input type="checkbox" class="ck"><span>Autorizo a Metrocasa a usar a minha imagem (selfie) de forma <b>temporária</b>, para fins comemorativos e de divulgação institucional.</span></label>
-      <label class="consent"><input type="checkbox" class="ck"><span>Autorizo a <b>exibição da minha imagem no painel/telão</b> da loja.</span></label>
-      <label class="consent"><input type="checkbox" class="ck"><span>Estou ciente de que posso <b>revogar</b> esta autorização a qualquer momento e pedir a exclusão da imagem.</span></label>
-      <label class="consent"><input type="checkbox" class="ck"><span>Declaro ter <b>18 anos ou mais</b>.</span></label>
+      <!-- Aviso de Privacidade: resumo + completo (LGPD) -->
+      <div class="privacy">
+        <b>Aviso de Privacidade (resumo)</b>
+        <p>A <b>[CONTROLADOR — razão social e CNPJ da Metrocasa]</b> tratará a sua imagem (selfie) para fins
+        <b>comemorativos e de divulgação institucional/marketing</b>. A imagem fica exibida no telão por
+        até <b>30 dias</b> e é excluída em seguida; o registro deste consentimento é guardado por <b>5 anos</b>.
+        Você pode <b>revogar</b> a qualquer momento e pedir a exclusão pelo canal <b>[SAC / e-mail do DPO — preencher]</b>.</p>
+        <details>
+          <summary>Ver aviso completo</summary>
+          <div class="privacy-full">
+            <p><b>Controlador:</b> [razão social e CNPJ da Metrocasa].</p>
+            <p><b>Finalidade:</b> uso comemorativo e de divulgação institucional/marketing da aquisição do imóvel.</p>
+            <p><b>Dados coletados:</b> imagem (selfie) e, quando informados, nome/identificação da família e loja.</p>
+            <p><b>Base legal:</b> consentimento do titular (art. 7º, I, LGPD).</p>
+            <p><b>Retenção:</b> imagem por até 30 dias após a finalidade; registro do consentimento por 5 anos.</p>
+            <p><b>Revogação e direitos:</b> acesso, correção, exclusão e revogação pelo canal de atendimento/DPO.</p>
+            <p><b>Encarregado (DPO):</b> [nome e e-mail do DPO — preencher].</p>
+            <p><b>Aviso completo:</b> [link do Aviso de Privacidade — preencher].</p>
+          </div>
+        </details>
+      </div>
 
-      <div class="legalnote">⚠️ Textos de consentimento são um rascunho — precisam ser validados pelo jurídico/DPO da Metrocasa antes de ir ao ar.</div>
+      <label class="consent"><input type="checkbox" class="ck"><span>Autorizo o uso <b>temporário</b> da minha imagem (selfie) pela Metrocasa, para fins <b>comemorativos e de divulgação institucional/marketing</b>, pelo prazo indicado no Aviso de Privacidade.</span></label>
+      <label class="consent"><input type="checkbox" class="ck"><span>Autorizo a <b>exibição pública</b> da minha imagem no <b>painel/telão</b> da loja.</span></label>
+      <label class="consent"><input type="checkbox" class="ck"><span>Estou ciente de que posso <b>revogar</b> este consentimento a qualquer momento pelo canal de atendimento/DPO, com <b>exclusão da imagem</b> em prazo razoável.</span></label>
+      <label class="consent"><input type="checkbox" class="ck"><span>Declaro ter <b>18 anos ou mais</b> e que <b>li o Aviso de Privacidade</b> acima.</span></label>
+
+      <!-- Menores na foto do telão (LGPD art. 14) -->
+      <div class="minors">
+        <div class="minors-q">A foto que vai ao telão contém <b>menores de 18 anos</b>?</div>
+        <label class="radio"><input type="radio" name="menores" value="nao"><span>Não</span></label>
+        <label class="radio"><input type="radio" name="menores" value="sim"><span>Sim</span></label>
+        <label class="consent" id="guardianBox" style="display:none">
+          <input type="checkbox" id="guardianCk"><span>Declaro ser o <b>responsável legal</b> pelo(s) menor(es) que aparece(m) na foto e autorizo a exibição da imagem deles, nos mesmos termos acima.</span>
+        </label>
+        <div class="minors-block" id="minorsBlock" style="display:none">⚠️ Sem a autorização do responsável legal, a foto com menores <b>não pode</b> ser usada. Volte e troque a foto do telão.</div>
+      </div>
+
+      <div class="legalnote">Os campos entre [colchetes] (controlador/CNPJ, DPO, SAC e link do Aviso completo) devem ser preenchidos pela Metrocasa antes de ir ao ar.</div>
 
       <button class="btn green" id="authBtn" disabled onclick="clienteSubmit()">Autorizar e enviar</button>
       <div class="backline"><button onclick="go('c-selfie')">refazer selfie</button></div>
@@ -283,12 +328,13 @@ textarea{min-height:60px;resize:vertical}
         <figure><img id="rTelaoPhoto" alt=""><figcaption>Foto do telão (gerente)</figcaption></figure>
         <figure class="selfie"><img class="rSelfie" alt=""><figcaption>Selfie do cliente</figcaption></figure>
       </div>
-      <div class="checks-sum">
+      <div class="checks-sum" id="consentChecks">
         <div><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Uso temporário da imagem autorizado</div>
         <div><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Exibição no telão autorizada</div>
         <div><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Ciente da revogação</div>
         <div><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Declarou 18+ anos</div>
       </div>
+      <div class="checks-sum" id="minorsCheck" style="margin-bottom:8px"><div id="rMinors"></div></div>
       <div class="row" style="margin-top:8px">
         <button class="btn ghost" onclick="reprovar()">Reprovar</button>
         <button class="btn green" onclick="aprovar()">Aprovar → telão</button>
@@ -317,7 +363,7 @@ const SB = {
   url:     "https://ccrkhflelncanduptfxv.supabase.co",
   anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjcmtoZmxlbG5jYW5kdXB0Znh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MTA1NzIsImV4cCI6MjA5NzM4NjU3Mn0.qNuLgNVM9EckdDyxjsMV_aTdCgLG8vEMNJa2BxjObpQ",
   bucket:  "celebracoes",
-  consentVersao: "v1-2026-06",   // versão do texto de consentimento aceito (LGPD)
+  consentVersao: "v2-2026-06",   // versão do texto de consentimento aceito (LGPD)
   exibirDias: 7,                 // por quantos dias a família pode aparecer no telão
   get configured(){ return !!(this.url && this.anonKey); }
 };
@@ -433,9 +479,25 @@ function stopCam(){ if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=
 /* ---- consentimento: habilita só com todos marcados ---- */
 function refreshConsent(){
   const all=[...$$('#c-consent .ck')].every(c=>c.checked);
-  $('#authBtn').disabled = !all;
+  const menores=document.querySelector('#c-consent input[name="menores"]:checked');
+  const guardian=$('#guardianCk');
+  let minorsOk=false;
+  if(menores) minorsOk = (menores.value==='nao') || !!(guardian && guardian.checked);
+  $('#authBtn').disabled = !(all && minorsOk);
 }
 $$('#c-consent .ck').forEach(c=>c.addEventListener('change', refreshConsent));
+document.querySelectorAll('#c-consent input[name="menores"]').forEach(r=>r.addEventListener('change', e=>{
+  const sim = e.target.value==='sim';
+  $('#guardianBox').style.display = sim ? 'flex' : 'none';
+  if(!sim && $('#guardianCk')) $('#guardianCk').checked=false;
+  $('#minorsBlock').style.display = (sim && !($('#guardianCk')&&$('#guardianCk').checked)) ? 'block' : 'none';
+  refreshConsent();
+}));
+$('#guardianCk') && $('#guardianCk').addEventListener('change', ()=>{
+  const sim=document.querySelector('#c-consent input[name="menores"]:checked');
+  $('#minorsBlock').style.display = (sim && sim.value==='sim' && !$('#guardianCk').checked) ? 'block' : 'none';
+  refreshConsent();
+});
 
 /* ---- preview da foto do gerente ---- */
 $('#gfile').addEventListener('change', e=>{
@@ -477,6 +539,10 @@ async function clienteSubmit(){
   if(!SB.configured){ toast('Configure o Supabase primeiro','#dc2626'); return; }
   if(!celebId){ toast('Sessão sem registro ativo','#dc2626'); return; }
   if(!selfieURL){ toast('Tire a selfie primeiro','#dc2626'); return; }
+  const _menores=document.querySelector('#c-consent input[name="menores"]:checked');
+  const contemMenores=_menores ? (_menores.value==='sim') : false;
+  const respMenor=contemMenores ? !!($('#guardianCk')&&$('#guardianCk').checked) : false;
+  if(contemMenores && !respMenor){ toast('Foto com menores exige autorização do responsável','#dc2626'); return; }
   toast('Enviando…','#2563eb');
   try{
     const c=await ensureSupabase();
@@ -487,7 +553,9 @@ async function clienteSubmit(){
     const upd=await c.from('celebracoes').update({
       selfie:path,
       consent_uso_temporario:true, consent_telao:true, consent_revogacao:true, consent_maior_18:true,
-      consent_versao:SB.consentVersao, consent_em:new Date().toISOString()
+      consent_contem_menores:contemMenores, consent_responsavel_menor:respMenor,
+      consent_versao:SB.consentVersao, consent_em:new Date().toISOString(),
+      consent_user_agent:(navigator.userAgent||'').slice(0,300)
     }).eq('id', celebId);
     if(upd.error){ toast('Falha ao salvar: '+upd.error.message,'#dc2626'); return; }
     go('c-done');
@@ -537,7 +605,15 @@ async function openReview(row){
   document.querySelector('.rSelfie').src=await signed(row.selfie);
   $('#reviewHead').innerHTML=`<b>${row.loja||'—'}</b> · ${row.identificacao||'Família'} · ${fmtTime(row.created_at)}`;
   const ck=[row.consent_uso_temporario,row.consent_telao,row.consent_revogacao,row.consent_maior_18];
-  document.querySelectorAll('#s-review .checks-sum div').forEach((d,i)=>{ d.style.opacity = ck[i]?1:.3; });
+  document.querySelectorAll('#consentChecks div').forEach((d,i)=>{ d.style.opacity = ck[i]?1:.3; });
+  const rm=$('#rMinors');
+  if(!row.consent_contem_menores){
+    rm.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Sem menores na foto'; rm.style.color='';
+  } else if(row.consent_responsavel_menor){
+    rm.innerHTML='<svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Menores + autorização do responsável legal'; rm.style.color='';
+  } else {
+    rm.innerHTML='⚠️ Foto com menores SEM autorização do responsável — não aprovar'; rm.style.color='#b91c1c';
+  }
   go('s-review');
 }
 
