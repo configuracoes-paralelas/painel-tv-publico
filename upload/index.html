@@ -189,10 +189,12 @@ textarea{min-height:60px;resize:vertical}
     <div class="card">
       <h1>Nova família 🔔</h1>
       <p class="lead">Anexe a foto que vai aparecer no telão e os dados. Em seguida, entregue o celular ao cliente.</p>
-      <label class="f">Loja / Unidade</label>
-      <input type="text" id="gloja" placeholder="Ex.: Tatuapé">
+      <label class="f">Empreendimento</label>
+      <input type="text" id="gemp" placeholder="Ex.: Alto da Boa Vista">
+      <label class="f">Unidade</label>
+      <input type="text" id="gunidade" placeholder="Ex.: U-0304">
       <label class="f">Identificação (família)</label>
-      <input type="text" id="gid" placeholder="Ex.: Família Silva">
+      <input type="text" id="gid" placeholder="Ex.: Família Aquino">
       <label class="f">Foto para o telão</label>
       <div class="drop" onclick="document.getElementById('gfile').click()">
         <span class="ic"><svg viewBox="0 0 24 24"><path d="M12 16V5M8 9l4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
@@ -525,8 +527,11 @@ async function gerenteSubmit(){
     const path=`${id}/telao.${ext}`;
     const up=await storageUpload(c, path, gerenteFile, gerenteFile.type||'image/png');
     if(up.error){ toast('Falha no upload: '+up.error.message,'#dc2626'); return; }
+    const emp=$('#gemp').value.trim();
+    const uni=$('#gunidade').value.trim();
+    const local=[emp, uni].filter(Boolean).join(' ') || null;   // ex.: "Alto da Boa Vista U-0304"
     const ins=await c.from('celebracoes').insert({
-      id, loja:$('#gloja').value.trim()||null, identificacao:$('#gid').value.trim()||null,
+      id, loja:local, identificacao:$('#gid').value.trim()||null,
       foto_telao:path, status:'pendente'
     });
     if(ins.error){ toast('Falha ao salvar: '+ins.error.message,'#dc2626'); return; }
@@ -645,8 +650,9 @@ function reprovar(){ decidir('reprovado'); }
 function resetState(){
   celebId=null; selfieURL=null; gerentePhoto=null; gerenteFile=null; reviewRow=null;
   const gp=$('#gprev'); if(gp){ gp.style.display='none'; gp.removeAttribute('src'); }
-  if($('#gloja')) $('#gloja').value='';
-  if($('#gid'))   $('#gid').value='';
+  if($('#gemp'))     $('#gemp').value='';
+  if($('#gunidade')) $('#gunidade').value='';
+  if($('#gid'))      $('#gid').value='';
   $$('#c-consent .ck').forEach(c=>c.checked=false);
   if($('#authBtn')) $('#authBtn').disabled=true;
   resetSelfieUI();
