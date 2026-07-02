@@ -635,7 +635,7 @@ function playCur(slot){
   if(slot.kind==="yt"){
     ensureYT(()=>{
       try{
-        if(wantSound) slot.yt.unMute(); else slot.yt.mute();
+        slot.yt.mute(); // YouTube sempre mudo
         slot.yt.loadVideoById({videoId:item.yid, startSeconds:item.at||0}); // autoplay
       }catch(e){}
       // se o navegador BLOQUEAR o autoplay com som, cai pra mudo (a TV nunca trava).
@@ -890,6 +890,7 @@ function canShowPromo(){
 let promoHideTimer=null;
 /* mostra o pop-up SÓ depois que a foto nova terminar de carregar (evita o flash da foto antiga) */
 function revealPromo(celeb){
+  try{ new Audio('./notification.mp3').play(); }catch(e){}
   paintPromo(celeb);
   const el=$("#promo");
   el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
@@ -927,7 +928,7 @@ function updateSoundIcon(){
 function setSound(on){
   wantSound = on;
   if(cur){
-    if(cur.kind==="yt"){ try{ on?cur.yt.unMute():cur.yt.mute(); if(on) cur.yt.playVideo(); }catch(e){} }
+    if(cur.kind==="yt"){ try{ cur.yt.mute(); if(on) cur.yt.playVideo(); }catch(e){} } // YouTube sempre mudo
     else { cur.vid.muted=!on; if(on) cur.vid.play().catch(()=>{}); }
   }
   if(on) showSoundCta(false);
