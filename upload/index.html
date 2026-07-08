@@ -255,6 +255,21 @@ textarea{min-height:60px;resize:vertical}
     </main>
   </section>
 
+  <!-- PRIMEIRO ACESSO — trocar a senha inicial -->
+  <section class="screen" id="g-changepw"><div class="app-bg">
+    <header class="panel-head"><div class="deco"><span class="dots"></span></div><span class="bell-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><span class="ph-brand"><span class="wordmark">metro<b>casa</b></span></span></header>
+    <div class="card">
+      <h1>Defina sua senha 🔒</h1>
+      <p class="lead">Este é seu primeiro acesso. Por segurança, crie uma senha só sua antes de continuar.</p>
+      <label class="f" for="npw1">Nova senha</label>
+      <input type="password" id="npw1" autocomplete="new-password" placeholder="mínimo 6 caracteres">
+      <label class="f" for="npw2">Confirmar nova senha</label>
+      <input type="password" id="npw2" autocomplete="new-password" placeholder="repita a senha">
+      <button class="btn green" onclick="trocarSenha()">Salvar e continuar</button>
+      <div class="backline"><button onclick="logout()">sair</button></div>
+    </div>
+  </div></section>
+
   <!-- GERENTE — anexar foto do telão -->
   <section class="screen" id="g-new"><div class="app-bg">
     <header class="panel-head"><div class="deco"><span class="dots"></span></div><span class="bell-sm" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><span class="ph-brand"><span class="wordmark">metro<b>casa</b></span></span></header>
@@ -511,9 +526,32 @@ async function entrar(){
     const c=await ensureSupabase();
     const { error }=await c.auth.signInWithPassword({email, password:senha});
     if(error){ toast('Login falhou: '+error.message,'#dc2626'); return; }
-    const { data }=await c.rpc('meu_papel');
-    go((data==='superintendente') ? 's-queue' : 'g-new');
+    await roteiaAposLogin(c);
   }catch(e){ toast('Erro de conexão','#dc2626'); }
+}
+/* primeiro acesso (senha inicial ainda não trocada) sempre passa por g-changepw antes de tudo */
+async function roteiaAposLogin(c){
+  const { data:u }=await c.auth.getUser();
+  const uid=u && u.user && u.user.id;
+  const { data:prof }=await c.from('profiles').select('senha_trocada').eq('id', uid).single();
+  if(prof && prof.senha_trocada===false){ go('g-changepw'); return; }
+  const { data:papel }=await c.rpc('meu_papel');
+  go((papel==='superintendente') ? 's-queue' : 'g-new');
+}
+async function trocarSenha(){
+  const p1=$('#npw1').value, p2=$('#npw2').value;
+  if(!p1 || p1.length<6){ toast('A senha deve ter ao menos 6 caracteres','#dc2626'); return; }
+  if(p1!==p2){ toast('As senhas não conferem','#dc2626'); return; }
+  try{
+    const c=await ensureSupabase();
+    const { error }=await c.auth.updateUser({ password:p1 });
+    if(error){ toast('Falha ao trocar senha: '+error.message,'#dc2626'); return; }
+    await c.rpc('marcar_senha_trocada');
+    $('#npw1').value=''; $('#npw2').value='';
+    toast('Senha atualizada!');
+    const { data:papel }=await c.rpc('meu_papel');
+    go((papel==='superintendente') ? 's-queue' : 'g-new');
+  }catch(e){ toast('Erro ao trocar senha','#dc2626'); }
 }
 
 /* ---- câmera ao vivo (sem galeria) ---- */
@@ -611,7 +649,9 @@ async function gerenteSubmit(){
     if(up.error){ toast('Falha no upload: '+up.error.message,'#dc2626'); return; }
     const emp=$('#gemp').value.trim();
     const uni=$('#gunidade').value.trim();
-    const local=[selectedEmoji, emp, uni].filter(Boolean).join(' ') || null;
+    const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const base=[selectedEmoji, emp, uni].filter(Boolean).join(' ');
+    const local=base ? (base+' · '+hora) : null; /* hora = quando foi enviado para aprovação */
     const ins=await c.from('celebracoes').insert({
       id, loja:local, identificacao:$('#gid').value.trim()||null,
       foto_telao:path, status:'pendente'
@@ -741,6 +781,8 @@ function resetState(){
   if($('#cemail')) $('#cemail').value='';
   selectedEmoji=''; const _ep=$('#emojiPick'); if(_ep) _ep.querySelectorAll('button').forEach(x=>x.classList.remove('sel'));
   if($('#authBtn')) $('#authBtn').disabled=true;
+  if($('#npw1')) $('#npw1').value='';
+  if($('#npw2')) $('#npw2').value='';
   resetSelfieUI();
 }
 function concluir(){ resetState(); go('g-new'); }
@@ -794,10 +836,7 @@ async function bootAuth(){
   try{
     const c=await ensureSupabase();
     const { data }=await c.auth.getSession();
-    if(data && data.session){
-      const { data:papel }=await c.rpc('meu_papel');
-      go((papel==='superintendente') ? 's-queue' : 'g-new');
-    }
+    if(data && data.session){ await roteiaAposLogin(c); }
   }catch(e){}
 }
 console.log('%cSININHO build: UI responsiva + tela cheia (v4)', 'color:#21A14B;font-weight:bold');
