@@ -1010,12 +1010,14 @@ function activity(){
 ["mousemove","keydown","click","touchstart"].forEach(ev=>document.addEventListener(ev, activity));
 activity();
 updateSoundIcon();
-focusMenu();   // já deixa um card selecionado p/ controle/teclado
 
 /* bootstrap: carrega API do YouTube e pré-carrega os links */
 loadYTApi();
 fetchLinks().then(l=>{ LINKS=l; }).catch(()=>{});
 setInterval(()=>{ fetchLinks().then(l=>{ LINKS=l; }).catch(()=>{}); }, CFG.pollMs);
+
+/* entra direto na categoria Loja, sem passar pela tela de menu */
+startCategory("loja");
 
 /* conecta ao Supabase (se configurado) e renova as fotos aprovadas periodicamente */
 initCelebracoes();
